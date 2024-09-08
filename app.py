@@ -1,14 +1,9 @@
 from flask import Flask, render_template, request, jsonify
-import os
 from werkzeug.utils import secure_filename
 import json
 from model import main
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = "./uploads"
-
-if not os.path.exists("./uploads"):
-    os.makedirs("./uploads")
 
 @app.route('/')
 def upload_files():
@@ -16,22 +11,16 @@ def upload_files():
 
 @app.route('/process', methods=['POST'])
 def process_files():
-    #print("post request triggered")
     if request.method == 'POST':
         pdf_file = request.files['pdf_file']
         json_file = request.files['json_file']
-        #print(type(request.files))
+        
         if pdf_file and json_file:
-            pdf_filename = secure_filename(pdf_file.filename)
-            json_filename = secure_filename(json_file.filename)
-            pdf_file.save(os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename))
-            json_file.save(os.path.join(app.config['UPLOAD_FOLDER'], json_filename))
-            
-            pdf_file_path = os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename)
-            json_file_path = os.path.join(app.config['UPLOAD_FOLDER'], json_filename)
-            
             try:
-                answers = main(pdf_file_path, json_file_path)
+                pdf_content = pdf_file.read()
+                json_content = json_file.read()
+                
+                answers = main(pdf_content, json_content)
                 
                 formatted_answers = json.dumps(answers, indent=2)
 

@@ -1,19 +1,21 @@
 from transformers import pipeline
-from langchain.document_loaders import PyPDFLoader, JSONLoader
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFacePipeline
+from langchain.schema import Document
 import json
+import io
+from pypdf import PdfReader
 
-def main(pdf_file_path, json_file_path):
+def main(pdf_content, json_content):
     try:
-        documents = load_document(pdf_file_path)
+        documents = load_document(pdf_content)
         
         index = create_index(documents)
         
-        questions = load_questions_from_json(json_file_path)
+        questions = load_questions_from_json(json_content)
         
         answers = answer_questions(index, questions)
         
@@ -26,18 +28,16 @@ def main(pdf_file_path, json_file_path):
         print(f"An error occurred: {str(e)}")
         return []
 
-def load_document(file_path):
-    if file_path.endswith('.pdf'):
-        loader = PyPDFLoader(file_path)
-    elif file_path.endswith('.json'):
-        loader = JSONLoader(file_path=file_path, jq_schema='.[]', text_content=False)
-    else:
-        raise ValueError("Unsupported file format. Please use PDF or JSON.")
-    return loader.load()
+def load_document(file_content):
+    pdf_file = io.BytesIO(file_content)
+    pdf_reader = PdfReader(pdf_file)
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text()
+    return [Document(page_content=text, metadata={"source": "uploaded_pdf"})]
 
-def load_questions_from_json(json_file_path):
-    with open(json_file_path, 'r') as file:
-        questions_data = json.load(file)
+def load_questions_from_json(json_content):
+    questions_data = json.loads(json_content)
     return questions_data.get('questions', [])
 
 def create_index(documents):
